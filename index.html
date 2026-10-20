@@ -317,6 +317,8 @@
   .s-bleedout .sd{background:var(--amber)}
   .s-removed{background:rgba(226,59,78,.12);color:#ff8592;border-color:rgba(226,59,78,.3)}
   .s-removed .sd{background:var(--accent)}
+  .s-pk{background:rgba(12,12,16,.72);color:#ff4d63;border-color:rgba(255,77,99,.45)}
+  .s-pk .sd{background:#ff4d63;box-shadow:0 0 6px rgba(255,77,99,.8)}
 
   .live-badge{
     display:inline-flex;align-items:center;gap:6px;font-size:.74rem;font-weight:700;
@@ -771,6 +773,7 @@ const STATUSES = [
   {key:"On Leave", cls:"s-onleave"},
   {key:"Inactive", cls:"s-inactive"},
   {key:"Bleedout", cls:"s-bleedout"},
+  {key:"Perma Killed", cls:"s-pk"},
   {key:"Removed",  cls:"s-removed"},
 ];
 const STATUS_CLS = Object.fromEntries(STATUSES.map(s=>[s.key,s.cls]));
@@ -1128,7 +1131,7 @@ function rankWatermark(role){
 const SVG_SKULL = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C7.6 2 4 5.4 4 9.6c0 2.3 1 4.3 2.6 5.7.3.3.5.7.5 1.1V18c0 .6.4 1 1 1h1v2h2v-2h2v2h2v-2h1c.6 0 1-.4 1-1v-1.6c0-.4.2-.8.5-1.1C19 13.9 20 11.9 20 9.6 20 5.4 16.4 2 12 2zM9 12a1.6 1.6 0 110-3.2A1.6 1.6 0 019 12zm6 0a1.6 1.6 0 110-3.2A1.6 1.6 0 0115 12z"/></svg>';
 const SVG_LEAVE = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/></svg>';
 // "out of the gang" = bled out or removed; pulled out of rank sections, rank hidden
-function isOut(m){ return m.status==="Bleedout" || m.status==="Removed"; }
+function isOut(m){ return m.status==="Bleedout" || m.status==="Perma Killed" || m.status==="Removed"; }
 // on leave = still in the gang but away; own section, rank kept
 function isOnLeave(m){ return m.status==="On Leave"; }
 
@@ -1261,7 +1264,7 @@ function render(){
     const outItems = list.filter(isOut).sort((a,b)=>(STATUS_RANK[a.status]??9)-(STATUS_RANK[b.status]??9) || (a.character_name||a.name||"").localeCompare(b.character_name||b.name||""));
     if(outItems.length){
       html += `<div class="rank-section out-section">
-        <div class="section-head out-head"><span class="insignia">${SVG_SKULL}</span><span class="sh-name">Out</span><span class="sh-count">${outItems.length}</span><span class="sh-sub">bleedout / removed</span><span class="sh-line"></span></div>
+        <div class="section-head out-head"><span class="insignia">${SVG_SKULL}</span><span class="sh-name">Out</span><span class="sh-count">${outItems.length}</span><span class="sh-sub">bled out / perma killed / removed</span><span class="sh-line"></span></div>
         <div class="grid">${outItems.map(cardHtml).join("")}</div>
       </div>`;
     }
@@ -1569,12 +1572,12 @@ function renderImportResults(matchedCount){
     : `<div class="imp-none">Nobody new — everyone on your list is already in the roster.</div>`;
   $("impAddBtn").style.display = impNew.length ? "inline-flex" : "none";
   $("impMissCount").textContent = impMissing.length;
-  const opts=['Keep','On Leave','Bleedout','Removed'];
+  const opts=['Keep','On Leave','Bleedout','Perma Killed','Removed'];
   $("impMissList").innerHTML = impMissing.length ? impMissing.map(m=>`
     <div class="imp-item">
       <span class="imp-nm">${esc(m.character_name||m.name)}</span><span style="flex:1"></span>
       <select class="imp-miss-act filter" data-id="${m.id}">
-        ${opts.map(o=>`<option value="${o}">${o==='Removed'?'Left (Removed)':o==='Bleedout'?'Bled out':o}</option>`).join("")}
+        ${opts.map(o=>`<option value="${o}">${o==='Removed'?'Left (Removed)':o==='Bleedout'?'Bled out':o==='Perma Killed'?'Perma killed (PK)':o}</option>`).join("")}
       </select>
     </div>`).join("")
     : `<div class="imp-none">Nobody missing — everyone active in the roster is on your list.</div>`;
@@ -1609,7 +1612,7 @@ async function importApplyMissing(){
     try{
       const m=allMembers.find(x=>x.id===r.id)||{};
       const hist=parseHistory(m).slice();
-      const txt = r.act==="Removed" ? "Left / removed from the gang" : r.act==="Bleedout" ? "Bleedout" : `Status: ${m.status||"Active"} → ${r.act}`;
+      const txt = r.act==="Removed" ? "Left / removed from the gang" : r.act==="Bleedout" ? "Bleedout" : r.act==="Perma Killed" ? "Character perma killed (PK)" : `Status: ${m.status||"Active"} → ${r.act}`;
       hist.push({date:todayStr(), text:txt, auto:true});
       const { error }=await sb.from("members").update({status:r.act, history:hist}).eq("id",r.id);
       if(error) throw error; done++;
@@ -1816,6 +1819,7 @@ $("memSave").addEventListener("click", async ()=>{
     if(orig.status && orig.status!==newStatus){
       const txt = newStatus==="Removed" ? "Left / removed from the gang"
                 : newStatus==="Bleedout" ? "Bleedout"
+                : newStatus==="Perma Killed" ? "Character perma killed (PK)"
                 : `Status: ${orig.status} → ${newStatus}`;
       history.push({date:today, text:txt, auto:true});
     }

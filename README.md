@@ -3,7 +3,8 @@
 Live gang roster & stream tracker for the Unholy crew on HeadlinerRP. One self-contained web page backed by Supabase (free tier).
 
 ## Features
-- Roster grouped by rank (custom, editable ranks with insignia), plus **On Leave** and **Out** (bleedout/removed) sections
+- Roster grouped by rank (custom, editable ranks with insignia), plus **On Leave** and **Out** (bled out / perma killed / removed) sections
+- Member **statuses**: Active, On Leave, Inactive, Bleedout, **Perma Killed** (PK'd), Removed — status changes auto-log to history
 - Automatic **Twitch live detection** + "Live now" spotlight strip
 - Click-through **profiles** with history timeline and stream links (Twitch / YouTube / Kick / TikTok)
 - **Profile photos** with framing (position / zoom / fill) and banner cover cards
