@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10 — Bugfixes: search autofill + modal closing on text-select
+- **Fixed:** the browser was autofilling your saved email into the roster **search box** on load. Added an off-screen username field so the browser fills that instead, and turned off autofill/autocorrect on the search input.
+- **Fixed:** selecting/highlighting text in the **edit password** field could close the popup if you released the mouse outside the box. Modals now only close when the click actually starts on the dark backdrop.
+
+## 2026-10 — Same-name handling + "How to use" guide
+- **Import** now handles members who share a first name in every case: it matches by unique Twitch link first, and only asks you to choose when a name genuinely can't be told apart (new **⚠️ Same name** section where you pick who each entry is, or add as new).
+- Added a **❔ How to use** button (visible to everyone) with two sections — one for regular viewers and one for editors with the password.
+
 ## 2026-10 — Smarter import: first-name matching + stream-change detection
 - **Import & compare** now matches on **first name** (the Discord list usually only has a character's first name), so "Jesse" on the list matches "Jesse James" in the roster instead of showing as both new and missing. Twitch login still takes priority when present.
 - New **🔗 Stream changed** section: for people already in the roster, if their stream link on the pasted list differs from what's stored, it's flagged with old → new and you can update the saved link in a click (keeps their other platforms; auto-logs to history).

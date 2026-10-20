@@ -394,6 +394,14 @@
   .imp-url{color:var(--faint);font-size:.78rem}
   .imp-item select{padding:5px 8px;font-size:.8rem}
   .imp-none{color:var(--muted);font-size:.84rem;padding:6px 4px}
+  .help-sec{margin-top:18px;border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--card)}
+  .help-sec:first-of-type{margin-top:4px}
+  .help-sec h3{margin:0 0 4px;font-size:1rem;display:flex;align-items:center;gap:8px}
+  .help-sec .help-note{font-size:.82rem;color:var(--muted);margin:0 0 10px}
+  .help-sec ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px}
+  .help-sec li{font-size:.9rem;line-height:1.45}
+  .help-sec li b{color:var(--text)}
+  .help-kbd{font-size:.78rem;background:var(--card-2);border:1px solid var(--border-2);border-radius:6px;padding:1px 6px;white-space:nowrap}
   .imp-matched{margin-top:16px;color:#5fe08e;font-size:.84rem;font-weight:600}
 
   /* rank manager rows */
@@ -526,6 +534,7 @@
     <button class="btn ghost" id="exportBtn" style="display:none">⧉ Export</button>
     <button class="btn ghost" id="importBtn" style="display:none">⇄ Import</button>
     <a class="btn" id="multiviewBtn" target="_blank" rel="noopener" style="display:none">📺 Multiview</a>
+    <button class="btn ghost" id="helpBtn" title="How to use">❔ How to use</button>
     <button class="btn ghost" id="editToggle">🔒 Edit</button>
   </div>
 </header>
@@ -564,7 +573,7 @@
   <div class="controls" id="controls" style="display:none">
     <div class="search">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      <input type="text" id="searchInput" placeholder="Search name, character, notes…" />
+      <input type="text" id="searchInput" name="rosterSearch" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search name, character, notes…" />
     </div>
     <select class="filter" id="roleFilter"><option value="">All roles</option></select>
     <select class="filter" id="statusFilter"><option value="">All statuses</option></select>
@@ -599,6 +608,8 @@
     <div class="msub">Enter the shared editor password to unlock editing.</div>
     <div class="field">
       <label>Password</label>
+      <!-- off-screen decoy gives Chrome a username target so it stops autofilling the search box with your email -->
+      <input type="text" id="pwUserDecoy" tabindex="-1" aria-hidden="true" autocomplete="username" style="position:absolute;left:-9999px;top:0;width:1px;height:1px;opacity:0" />
       <input type="password" id="pwInput" autocomplete="current-password" />
     </div>
     <div class="err" id="pwErr"></div>
@@ -645,6 +656,11 @@
     </div>
     <div class="err" id="importErr"></div>
     <div id="importResults" style="display:none">
+      <div class="imp-group" id="impAmbiguousGroup" style="display:none">
+        <div class="imp-head"><span class="imp-h-title">⚠️ Same name — pick who each one is</span> <span class="imp-count" id="impAmbCount">0</span></div>
+        <div class="imp-list" id="impAmbList"></div>
+        <button class="btn small" id="impResolveBtn" style="margin-top:8px;display:none">Resolve selected</button>
+      </div>
       <div class="imp-group" id="impNewGroup">
         <div class="imp-head"><span class="imp-h-title">🟢 New — on your list, not in the roster</span> <span class="imp-count" id="impNewCount">0</span></div>
         <div class="imp-list" id="impNewList"></div>
@@ -664,6 +680,46 @@
     </div>
     <div class="modal-actions">
       <button class="btn ghost" id="importClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- How to use modal -->
+<div class="overlay" id="helpOverlay">
+  <div class="modal" style="max-width:660px">
+    <h2>How to use this roster</h2>
+    <div class="msub">Anyone can view. Making changes needs the shared editor password.</div>
+
+    <div class="help-sec">
+      <h3>👀 For everyone (viewing)</h3>
+      <p class="help-note">No password needed — just look around.</p>
+      <ul>
+        <li><b>Browse the roster:</b> members are grouped by rank. <b>On Leave</b> and <b>Out</b> (bled out / perma killed / removed) have their own sections at the bottom.</li>
+        <li><b>Who's live:</b> anyone streaming on Twitch automatically lights up <b>LIVE</b> and appears in the "Live now" strip — it refreshes on its own.</li>
+        <li><b>Open a profile:</b> click any member to see their streams, history timeline, and character details.</li>
+        <li><b>Search &amp; filter:</b> use the search box and the rank/status filters to narrow the list; click a rank chip to jump to it.</li>
+        <li><b>Seasons:</b> if the <b>Season</b> dropdown is showing, switch it to view past seasons. The roster and the gallery both follow the season you pick.</li>
+        <li><b>Gallery (📸):</b> open the Gallery tab to view photos; hover a photo and click the download arrow to save it.</li>
+        <li><b>Multiview (📺):</b> opens a page that watches several members' streams at once.</li>
+      </ul>
+    </div>
+
+    <div class="help-sec">
+      <h3>🔓 For editors (with the password)</h3>
+      <p class="help-note">Click <b>🔒 Edit</b>, enter the shared password, and these unlock. Click <b>🔓 Lock</b> when you're done.</p>
+      <ul>
+        <li><b>Add / edit a member:</b> <b>+ Add member</b>, or click anyone to edit. Set character name, Twitch/stream handle, rank, status, stream links, profile photo (with position/zoom), and dated history notes.</li>
+        <li><b>Statuses:</b> Active, On Leave, Inactive, Bleedout, <b>Perma Killed</b> (PK), Removed. Status and rank changes log to the member's history automatically.</li>
+        <li><b>Ranks (⚙ Ranks):</b> add, rename, or reorder ranks — order is seniority.</li>
+        <li><b>Gallery (📸):</b> <b>+ Add photos</b> to post (auto-compressed); photos go into the season you're viewing.</li>
+        <li><b>Seasons:</b> <b>+ Start new season</b> archives the current season (kept and viewable) and starts the next one empty. In a member's edit form you can also <b>move</b> them to another season, or <b>⇧ Carry over</b> a core member into the current season while keeping their archived record.</li>
+        <li><b>Export (⧉):</b> copies the current season's active roster (name + Twitch link) ready to paste into Discord.</li>
+        <li><b>Import (⇄):</b> paste a list of first name + stream link and <b>Compare</b>. It matches on first name, then shows who's <b>new</b>, whose <b>stream link changed</b>, anyone with a <b>duplicate first name</b> to confirm, and who's <b>missing</b> (mark them Keep / On Leave / Bled out / Perma killed / Left).</li>
+      </ul>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn primary" id="helpClose">Got it</button>
     </div>
   </div>
 </div>
@@ -1595,7 +1651,7 @@ function parseImportList(text){
     return { name, url, login };
   });
 }
-let impNew=[], impMissing=[], impChanged=[];
+let impNew=[], impMissing=[], impChanged=[], impAmbiguous=[];
 function openImport(){
   $("impRole").innerHTML = ROLES.map((r,i)=>`<option ${i===ROLES.length-1?"selected":""}>${esc(r)}</option>`).join("");
   $("impSeason").textContent = selectedSeason;
@@ -1608,25 +1664,61 @@ function doCompare(){
   if(!entries.length){ $("importErr").textContent="Paste at least one line first (name and stream link)."; return; }
   $("importErr").textContent="";
   const roster = members.filter(m=>m.status==="Active");
-  const idx = roster.map(m=>({ m, login:(memberTwitchLogins(m)[0]||null), key:normName(m.character_name||m.name), fkey:firstName(m.character_name||m.name) }));
+  const idx = roster.map(m=>({ m, logins:memberTwitchLogins(m), key:normName(m.character_name||m.name), fkey:firstName(m.character_name||m.name) }));
   const matched=new Set();
-  impNew=[]; impChanged=[];
+  impNew=[]; impChanged=[]; impAmbiguous=[];
+  const ambigIds=new Set();
+
+  // PASS 1 — Twitch login is unique, so it resolves same-name people cleanly. Do all login matches first.
+  const pending=[];
   entries.forEach(e=>{
-    const el=e.login, ek=normName(e.name), efk=firstName(e.name);
-    // 1) exact Twitch login, 2) full name, 3) first name — never double-match one member
-    let hit = el ? idx.find(r=>r.login===el && !matched.has(r.m.id)) : null;
-    if(!hit) hit = idx.find(r=> !matched.has(r.m.id) && ((ek && r.key===ek) || (efk && r.fkey && r.fkey===efk)));
-    if(hit){
-      matched.add(hit.m.id);
-      const ch = streamChange(hit.m, e);
-      if(ch) impChanged.push({ m:hit.m, e, old:ch.old, neu:ch.neu });
-    } else impNew.push(e);
+    if(e.login){
+      const hit = idx.find(r=> !matched.has(r.m.id) && r.logins.includes(e.login));
+      if(hit){ matched.add(hit.m.id); const ch=streamChange(hit.m,e); if(ch) impChanged.push({m:hit.m,e,old:ch.old,neu:ch.neu}); return; }
+    }
+    pending.push(e); // couldn't match by login — resolve by name below
   });
-  impMissing = roster.filter(m=>!matched.has(m.id));
+
+  // PASS 2 — name match on whoever's left. If a name hits 2+ people, it's genuinely ambiguous → ask.
+  pending.forEach(e=>{
+    const ek=normName(e.name), efk=firstName(e.name);
+    const cands = idx.filter(r=> !matched.has(r.m.id) && ((ek && r.key===ek) || (efk && r.fkey && r.fkey===efk)));
+    if(cands.length===1){
+      const hit=cands[0]; matched.add(hit.m.id);
+      const ch=streamChange(hit.m,e); if(ch) impChanged.push({m:hit.m,e,old:ch.old,neu:ch.neu});
+    } else if(cands.length===0){
+      impNew.push(e);
+    } else {
+      impAmbiguous.push({ e, candidates:cands.map(c=>c.m) });
+      cands.forEach(c=>ambigIds.add(c.m.id)); // hold them out of "missing" until resolved
+    }
+  });
+
+  impMissing = roster.filter(m=>!matched.has(m.id) && !ambigIds.has(m.id));
   renderImportResults(matched.size);
 }
 function renderImportResults(matchedCount){
   $("importResults").style.display="block";
+  // ⚠️ ambiguous (same first name) — resolve manually
+  $("impAmbiguousGroup").style.display = impAmbiguous.length ? "block" : "none";
+  $("impAmbCount").textContent = impAmbiguous.length;
+  $("impAmbList").innerHTML = impAmbiguous.map((a,i)=>{
+    const newLink = a.e.login ? ("twitch.tv/"+a.e.login) : (a.e.url ? normUrl(a.e.url) : "(no link)");
+    const opts = a.candidates.map(m=>{
+      const lg=memberTwitchLogins(m)[0];
+      return `<option value="${m.id}">${esc(m.character_name||m.name)}${lg?` — twitch.tv/${esc(lg)}`:""}</option>`;
+    }).join("");
+    return `<div class="imp-item" style="flex-wrap:wrap">
+      <span class="imp-nm">${esc(a.e.name)}</span>
+      <span class="imp-url">${esc(newLink)}</span>
+      <span style="flex:1"></span>
+      <select class="imp-amb-act filter" data-i="${i}">
+        <option value="">— pick who this is —</option>
+        ${opts}
+        <option value="__new__">➕ Add as a new member</option>
+      </select></div>`;
+  }).join("");
+  $("impResolveBtn").style.display = impAmbiguous.length ? "inline-flex" : "none";
   $("impNewCount").textContent = impNew.length;
   $("impNewList").innerHTML = impNew.length ? impNew.map((e,i)=>`
     <label class="imp-item"><input type="checkbox" class="imp-new-chk" data-i="${i}" checked>
@@ -1709,11 +1801,40 @@ async function importApplyStreamUpdates(){
   toast(`${done} link${done!==1?"s":""} updated${failed?`, ${failed} failed`:""}`);
   await loadMembers(); doCompare();
 }
+async function importResolveAmbiguous(){
+  const picks=[...document.querySelectorAll(".imp-amb-act")].map(s=>({a:impAmbiguous[+s.dataset.i], val:s.value})).filter(r=>r.a && r.val);
+  if(!picks.length){ toast("Pick who each one is first"); return; }
+  const role=$("impRole").value; const btn=$("impResolveBtn"); btn.disabled=true; const o=btn.textContent;
+  let done=0,failed=0;
+  for(const r of picks){
+    try{
+      const e=r.a.e;
+      if(r.val==="__new__"){
+        const streams = e.url ? [{platform:(e.login?"Twitch":"Other"), url:e.url}] : [];
+        const { error }=await sb.from("members").insert({ name:e.login||e.name, character_name:e.name, role, status:"Active",
+          is_live:false, notes:null, streams, history:[{date:todayStr(),text:`Joined as ${role}`,auto:true}], avatar_url:null, season:selectedSeason });
+        if(error) throw error;
+      } else {
+        const m=(members.find(x=>x.id===r.val)||allMembers.find(x=>x.id===r.val)); if(!m) throw new Error("not found");
+        const streams=applyImportStream(m, e);
+        const hist=parseHistory(m).slice();
+        const ch=streamChange(m,e); if(ch) hist.push({date:todayStr(), text:`Stream updated → ${ch.neu}`, auto:true});
+        const { error }=await sb.from("members").update({streams, history:hist}).eq("id",m.id);
+        if(error) throw error;
+      }
+      done++;
+    }catch(err){ failed++; }
+  }
+  btn.disabled=false; btn.textContent=o;
+  toast(`${done} resolved${failed?`, ${failed} failed`:""}`);
+  await loadMembers(); doCompare();
+}
 $("importBtn").addEventListener("click", openImport);
 $("importClose").addEventListener("click", ()=>$("importOverlay").classList.remove("show"));
 $("importCompare").addEventListener("click", doCompare);
 $("impAddBtn").addEventListener("click", importAddSelected);
 $("impUpdateBtn").addEventListener("click", importApplyStreamUpdates);
+$("impResolveBtn").addEventListener("click", importResolveAmbiguous);
 $("impApplyBtn").addEventListener("click", importApplyMissing);
 
 // ---- photo gallery ----
@@ -1985,8 +2106,15 @@ $("memDelete").addEventListener("click", async ()=>{
   toast("Member deleted");
 });
 
-// close modals on overlay click
-["pwOverlay","memOverlay","profileOverlay","ranksOverlay","exportOverlay","importOverlay"].forEach(id=>$(id).addEventListener("click",e=>{if(e.target.id===id)$(id).classList.remove("show");}));
+$("helpBtn").addEventListener("click",()=>$("helpOverlay").classList.add("show"));
+$("helpClose").addEventListener("click",()=>$("helpOverlay").classList.remove("show"));
+// close modals on backdrop click — but only when the press STARTED on the backdrop,
+// so selecting text in a field and releasing outside it doesn't close the modal.
+["pwOverlay","memOverlay","profileOverlay","ranksOverlay","exportOverlay","importOverlay","helpOverlay"].forEach(id=>{
+  const ov=$(id); let downOnBackdrop=false;
+  ov.addEventListener("mousedown",e=>{ downOnBackdrop = (e.target===ov); });
+  ov.addEventListener("click",e=>{ if(e.target===ov && downOnBackdrop) ov.classList.remove("show"); downOnBackdrop=false; });
+});
 
 $("heroToggle").addEventListener("click", ()=>{
   const expanded = $("hero").classList.toggle("expanded");
