@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10 — Per-member season control
+- The member edit form now has a **Season** dropdown (shown once more than one season exists) to **move** a person to a different season.
+- Added a **⇧ Carry over to current season** button that **copies** a member into the current season while leaving their archived record intact — for core members who continue into the new season.
+- Both auto-log to the member's history ("Carried over from Season N").
+
 ## 2026-10 — Season-aware gallery
 - The **📸 Gallery** now follows the active season: existing photos become Season 1, new uploads are tagged to the season you're viewing, and switching seasons filters the photos to match.
 - Empty seasons show a hint pointing to photos in other seasons. Requires a `season` column on the `gallery` table (Setup guide Step 2e).

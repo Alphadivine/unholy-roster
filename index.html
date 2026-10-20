@@ -720,6 +720,14 @@
       <div class="field"><label>Role / Rank</label><select id="fRole"></select></div>
       <div class="field"><label>Status</label><select id="fStatus"></select></div>
     </div>
+    <div class="field" id="seasonField" style="display:none">
+      <label>Season</label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="fSeason" style="flex:1;min-width:130px"></select>
+        <button type="button" class="btn ghost small" id="carryOverBtn" style="display:none">⇧ Carry over to current season</button>
+      </div>
+      <div id="seasonHint" style="font-size:.78rem;color:var(--muted);margin-top:6px"></div>
+    </div>
     <div class="field">
       <label>Stream links</label>
       <div class="stream-editor" id="streamEditor"></div>
@@ -1472,6 +1480,21 @@ window.openMember = function(id){
   $("fName").value=m.name||""; $("fCharacter").value=m.character_name||"";
   fillSelect($("fRole"),ROLES,m.role||"Soldiers");
   fillSelect($("fStatus"),STATUSES.map(s=>s.key),m.status||"Active");
+  // season controls (only relevant once seasons are in play)
+  const seasonsExist = seasonsPresent.length>1 || currentSeason>1;
+  $("seasonField").style.display = seasonsExist ? "block" : "none";
+  if(seasonsExist){
+    const maxS = Math.max(currentSeason, ...seasonsPresent, 1);
+    const memSeason = id ? (+(m.season||1)) : selectedSeason;
+    const opts = [];
+    for(let s=1; s<=maxS; s++) opts.push(s);
+    $("fSeason").innerHTML = opts.map(s=>`<option value="${s}" ${s===memSeason?"selected":""}>Season ${s}${s===currentSeason?" (current)":""}</option>`).join("");
+    const canCarry = !!id && memSeason!==currentSeason;
+    $("carryOverBtn").style.display = canCarry ? "inline-flex" : "none";
+    $("seasonHint").innerHTML = id
+      ? "Changing this <b>moves</b> them to another season (they leave this one)." + (canCarry ? " To keep them in both, use <b>Carry over</b> instead." : "")
+      : "New members are added to the season you're viewing.";
+  }
   $("fLive").checked=!!m.is_live; $("fNotes").value=m.notes||"";
   $("streamEditor").innerHTML="";
   const streams = id?parseStreams(m):[];
@@ -1852,7 +1875,9 @@ $("memSave").addEventListener("click", async ()=>{
     role:newRole, status:newStatus,
     is_live:$("fLive").checked, notes:$("fNotes").value.trim()||null,
     streams:collectStreams(), history, avatar_url:avatarUrl,
-    season: editingId ? ((members.find(x=>x.id===editingId)||{}).season || selectedSeason) : selectedSeason
+    season: ($("seasonField").style.display!=="none")
+              ? (parseInt($("fSeason").value,10) || selectedSeason)
+              : (editingId ? ((members.find(x=>x.id===editingId)||{}).season || selectedSeason) : selectedSeason)
   };
   $("memErr").textContent="Saving…";
   let error;
@@ -1863,6 +1888,26 @@ $("memSave").addEventListener("click", async ()=>{
   $("memOverlay").classList.remove("show");
   await loadMembers();
   toast(editingId?"Member updated":"Member added");
+});
+
+$("carryOverBtn").addEventListener("click", async ()=>{
+  if(!editingId) return;
+  const m=members.find(x=>x.id===editingId); if(!m) return;
+  if(!confirm(`Carry ${m.character_name||m.name||"this member"} over into Season ${currentSeason}?\n\nTheir Season ${+(m.season||1)} record stays as history; a copy is added to the current season.`)) return;
+  const btn=$("carryOverBtn"); btn.disabled=true; const orig=btn.textContent; btn.textContent="Carrying over…";
+  const hist=Array.isArray(m.history)?m.history.slice():[];
+  hist.push({date:new Date().toISOString().slice(0,10), text:`Carried over from Season ${+(m.season||1)}`, auto:true});
+  const copy={ name:m.name, character_name:m.character_name||null, role:m.role||"Soldiers",
+    status:"Active", is_live:!!m.is_live, notes:m.notes||null,
+    streams:Array.isArray(m.streams)?m.streams:[], history:hist, avatar_url:m.avatar_url||null,
+    season:currentSeason };
+  const {error}=await sb.from("members").insert(copy);
+  btn.disabled=false; btn.textContent=orig;
+  if(error){ $("memErr").textContent=error.message; return; }
+  $("memOverlay").classList.remove("show");
+  selectedSeason=currentSeason;
+  await loadMembers();
+  toast(`Carried over to Season ${currentSeason}`);
 });
 
 $("memDelete").addEventListener("click", async ()=>{
