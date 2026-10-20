@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10 — Per-season banner
+- The top **banner is now per-season**. The existing banner automatically becomes **Season 1's**, and switching seasons swaps the banner.
+- In edit mode you can **add / change / remove** the banner for whichever season you're viewing (uploaded and auto-compressed, stored per season in settings). A season with no banner shows none; removing Season 1's reverts to the built-in default.
+- No new SQL — uses the existing `settings` table and `gallery` storage bucket.
+
 ## 2026-10 — Bugfixes: search autofill + modal closing on text-select
 - **Fixed:** the browser was autofilling your saved email into the roster **search box** on load. Added an off-screen username field so the browser fills that instead, and turned off autofill/autocorrect on the search input.
 - **Fixed:** selecting/highlighting text in the **edit password** field could close the popup if you released the mouse outside the box. Modals now only close when the click actually starts on the dark backdrop.

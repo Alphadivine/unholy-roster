@@ -62,6 +62,10 @@
     border:1px solid rgba(255,255,255,.25);color:#fff;font-family:inherit;font-size:.78rem;font-weight:600;
     padding:8px 13px;border-radius:9px;transition:.15s}
   .hero-toggle:hover{background:rgba(11,13,18,.85);border-color:rgba(255,255,255,.5)}
+  .hero-edit{position:absolute;left:14px;top:14px;z-index:3;display:flex;gap:8px}
+  .hero-edit .btn{background:rgba(11,13,18,.72);border-color:rgba(255,255,255,.35);color:#fff}
+  .hero-edit .btn:hover{background:rgba(11,13,18,.9);border-color:rgba(255,255,255,.6)}
+  #heroAddBar{display:flex;justify-content:center;padding:14px;margin:0 0 4px}
 
   .live-strip{display:flex;align-items:center;gap:14px;margin-bottom:18px;padding:10px 16px;position:relative;overflow:hidden;
     background:linear-gradient(90deg, rgba(255,45,85,.15), rgba(255,45,85,.03));border:1px solid rgba(255,45,85,.32);border-radius:12px}
@@ -539,7 +543,16 @@
   </div>
 </header>
 
-<div class="hero" id="hero"><img id="heroImg" alt="" /><button class="hero-toggle" id="heroToggle" type="button">⤢ Show full team photo</button></div>
+<div class="hero" id="hero">
+  <img id="heroImg" alt="" />
+  <button class="hero-toggle" id="heroToggle" type="button">⤢ Show full team photo</button>
+  <div class="hero-edit" id="heroEdit" style="display:none">
+    <button class="btn ghost small" id="heroChangeBtn" type="button">🖼 Change banner</button>
+    <button class="btn ghost small" id="heroRemoveBtn" type="button">✕ Remove</button>
+  </div>
+</div>
+<div id="heroAddBar" style="display:none"></div>
+<input type="file" id="heroFile" accept="image/*" style="display:none" />
 
 <div class="wrap">
 
@@ -712,6 +725,7 @@
         <li><b>Statuses:</b> Active, On Leave, Inactive, Bleedout, <b>Perma Killed</b> (PK), Removed. Status and rank changes log to the member's history automatically.</li>
         <li><b>Ranks (⚙ Ranks):</b> add, rename, or reorder ranks — order is seniority.</li>
         <li><b>Gallery (📸):</b> <b>+ Add photos</b> to post (auto-compressed); photos go into the season you're viewing.</li>
+        <li><b>Banner:</b> the top image is per-season — use <b>Change / Remove banner</b> on it (or <b>Add a banner</b> if blank) to set the image for the season you're viewing.</li>
         <li><b>Seasons:</b> <b>+ Start new season</b> archives the current season (kept and viewable) and starts the next one empty. In a member's edit form you can also <b>move</b> them to another season, or <b>⇧ Carry over</b> a core member into the current season while keeping their archived record.</li>
         <li><b>Export (⧉):</b> copies the current season's active roster (name + Twitch link) ready to paste into Discord.</li>
         <li><b>Import (⇄):</b> paste a list of first name + stream link and <b>Compare</b>. It matches on first name, then shows who's <b>new</b>, whose <b>stream link changed</b>, anyone with a <b>duplicate first name</b> to confirm, and who's <b>missing</b> (mark them Keep / On Leave / Bled out / Perma killed / Left).</li>
@@ -851,7 +865,7 @@ const PLATFORMS = ["Twitch","YouTube","Kick","TikTok","Other"];
 const TIKTOK_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 5.82a4.28 4.28 0 0 1-1.06-2.82h-3.1v12.4a2.59 2.59 0 1 1-2.59-2.59c.27 0 .53.04.78.12V9.66a5.7 5.7 0 1 0 4.9 5.64V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3a4.28 4.28 0 0 1-3.13-1.48z"/></svg>';
 
 let sb = null, members = [], allMembers = [], canEdit = false, editingId = null, realtimeChan = null;
-let currentSeason = 1, selectedSeason = 1, seasonsPresent = [1];
+let currentSeason = 1, selectedSeason = 1, seasonsPresent = [1], settingsMap = {};
 let twitchLive = new Set();   // member ids detected live on Twitch (auto)
 let twitchTimer = null;
 let pendingPicFile = null;    // a newly-picked profile image awaiting upload
@@ -902,9 +916,7 @@ function initHeader(){
     let fav = document.querySelector("link[rel=icon]") || document.createElement("link");
     fav.rel="icon"; fav.href=CONFIG.LOGO_DATA_URL; document.head.appendChild(fav);
   }
-  if(CONFIG.HERO_DATA_URL){
-    $("heroImg").src=CONFIG.HERO_DATA_URL; $("hero").style.display="block";
-  }
+  applyHero();
   if(CONFIG.MULTIVIEW_URL){
     const mv=$("multiviewBtn"); mv.href=CONFIG.MULTIVIEW_URL; mv.style.display="inline-flex";
   }
@@ -1014,11 +1026,35 @@ async function loadMembers(){
 
 /* ---------- seasons ---------- */
 async function loadSettings(){
+  settingsMap = {};
   try{
-    const { data } = await sb.from("settings").select("key,value").eq("key","current_season").maybeSingle();
-    if(data && data.value){ currentSeason = parseInt(data.value,10)||1; }
+    const { data } = await sb.from("settings").select("key,value");
+    (data||[]).forEach(r=>{ settingsMap[r.key] = r.value; });
+    if(settingsMap.current_season){ currentSeason = parseInt(settingsMap.current_season,10)||1; }
   }catch(_){ /* settings table may not exist yet → default season 1 */ }
   selectedSeason = currentSeason;
+}
+// banner per season: settings key hero_s{N}; Season 1 falls back to the built-in CONFIG banner
+function applyHero(){
+  const key = "hero_s"+selectedSeason;
+  let url = settingsMap[key];
+  if(!url && selectedSeason===1 && CONFIG.HERO_DATA_URL) url = CONFIG.HERO_DATA_URL;
+  const hero=$("hero"), addBar=$("heroAddBar");
+  if(url){
+    $("heroImg").src = url;
+    hero.style.display = "block";
+    $("heroEdit").style.display = canEdit ? "flex" : "none";
+    addBar.style.display = "none";
+  } else {
+    hero.style.display = "none";
+    hero.classList.remove("expanded");
+    $("heroEdit").style.display = "none";
+    if(canEdit){
+      addBar.innerHTML = `<button class="btn ghost small" id="heroAddBtn" type="button">🖼 Add a banner for Season ${selectedSeason}</button>`;
+      addBar.style.display = "flex";
+      $("heroAddBtn").addEventListener("click", ()=>$("heroFile").click());
+    } else { addBar.style.display="none"; addBar.innerHTML=""; }
+  }
 }
 function applySeason(){
   const present = new Set(allMembers.map(m=>+(m.season||1)));
@@ -1030,6 +1066,7 @@ function applySeason(){
   animateOnce = true;
   render();
   if(galleryLoaded) renderGallery();
+  applyHero();
 }
 function renderSeasonBar(){
   // show for viewers only once there's more than one season; always show in edit mode so editors can start one
@@ -1483,6 +1520,7 @@ function setEditMode(on){
   $("galleryAddBtn").style.display = on?"inline-flex":"none";
   if(galleryLoaded) renderGallery();
   renderSeasonBar();
+  applyHero();
   $("editToggle").textContent = on?"🔓 Lock":"🔒 Edit";
   if(members.length) render();
 }
@@ -2119,6 +2157,37 @@ $("helpClose").addEventListener("click",()=>$("helpOverlay").classList.remove("s
 $("heroToggle").addEventListener("click", ()=>{
   const expanded = $("hero").classList.toggle("expanded");
   $("heroToggle").textContent = expanded ? "⤡ Show less" : "⤢ Show full team photo";
+});
+$("heroChangeBtn").addEventListener("click", ()=>$("heroFile").click());
+$("heroFile").addEventListener("change", async e=>{
+  const f=(e.target.files||[])[0]; e.target.value="";
+  if(!f) return;
+  if(!canEdit){ toast("Unlock editing first"); return; }
+  const season=selectedSeason, key="hero_s"+season;
+  const addBtn=$("heroAddBtn"); if(addBtn){ addBtn.disabled=true; addBtn.textContent="Uploading…"; }
+  try{
+    const blob=await compressImage(f, 2000, 0.85);
+    const path=`hero_s${season}_${Date.now()}.jpg`;
+    const { error:upErr }=await sb.storage.from("gallery").upload(path, blob, {contentType:"image/jpeg", upsert:true});
+    if(upErr) throw upErr;
+    const url=sb.storage.from("gallery").getPublicUrl(path).data.publicUrl;
+    const { error:setErr }=await sb.from("settings").upsert({key, value:url});
+    if(setErr) throw setErr;
+    settingsMap[key]=url; applyHero();
+    toast(`Banner set for Season ${season}`);
+  }catch(err){ toast("Banner upload failed: "+(err.message||err)); if(addBtn){ addBtn.disabled=false; addBtn.textContent=`🖼 Add a banner for Season ${season}`; } }
+});
+$("heroRemoveBtn").addEventListener("click", async ()=>{
+  if(!canEdit) return;
+  const season=selectedSeason, key="hero_s"+season;
+  const dflt = season===1 && CONFIG.HERO_DATA_URL ? "\n\n(Season 1 will revert to the built-in default banner.)" : "";
+  if(!confirm(`Remove the banner for Season ${season}?${dflt}`)) return;
+  try{
+    const { error }=await sb.from("settings").delete().eq("key", key);
+    if(error) throw error;
+    delete settingsMap[key]; applyHero();
+    toast("Banner removed");
+  }catch(err){ toast("Couldn't remove banner: "+(err.message||err)); }
 });
 
 $("footnote").textContent = `${CONFIG.GANG_NAME||"Gang"}${CONFIG.SERVER?" · "+CONFIG.SERVER:""} — Roster syncs live for everyone · Twitch live status auto-updates every minute · Edits require the shared password.`;
