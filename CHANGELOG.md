@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10 — Smarter import: first-name matching + stream-change detection
+- **Import & compare** now matches on **first name** (the Discord list usually only has a character's first name), so "Jesse" on the list matches "Jesse James" in the roster instead of showing as both new and missing. Twitch login still takes priority when present.
+- New **🔗 Stream changed** section: for people already in the roster, if their stream link on the pasted list differs from what's stored, it's flagged with old → new and you can update the saved link in a click (keeps their other platforms; auto-logs to history).
+
 ## 2026-10 — Fix: "Start new season" button hidden on single-season setups
 - The Season bar (and its **+ Start new season** button) was hidden whenever only Season 1 existed — exactly when you need it. It now shows in **edit mode** regardless of season count, so editors can always start the next season. Viewers still only see the bar once more than one season exists.
 

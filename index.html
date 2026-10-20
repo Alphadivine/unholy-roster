@@ -635,7 +635,7 @@
 <div class="overlay" id="importOverlay">
   <div class="modal" style="max-width:620px">
     <h2>Import &amp; compare roster</h2>
-    <div class="msub">Paste a list of members (name and their stream link) — one per line. I'll compare it to <b>Season <span id="impSeason">?</span></b>'s active roster and show who's new and who's missing.</div>
+    <div class="msub">Paste a list of members (first name and their stream link) — one per line. I'll compare it to <b>Season <span id="impSeason">?</span></b>'s active roster: who's new, who's missing, and anyone whose stream link changed. First names are matched even if the roster has a full name.</div>
     <textarea id="importText" class="export-text" placeholder="Hippie  https://twitch.tv/hippiestiixrp&#10;Honey   https://twitch.tv/thebabyhutt&#10;..."></textarea>
     <div class="imp-row">
       <label>New members join as</label>
@@ -649,6 +649,11 @@
         <div class="imp-head"><span class="imp-h-title">🟢 New — on your list, not in the roster</span> <span class="imp-count" id="impNewCount">0</span></div>
         <div class="imp-list" id="impNewList"></div>
         <button class="btn small" id="impAddBtn" style="margin-top:8px;display:none">Add selected</button>
+      </div>
+      <div class="imp-group" id="impChangedGroup">
+        <div class="imp-head"><span class="imp-h-title">🔗 Stream changed — link on your list differs from the roster</span> <span class="imp-count" id="impChangedCount">0</span></div>
+        <div class="imp-list" id="impChangedList"></div>
+        <button class="btn small" id="impUpdateBtn" style="margin-top:8px;display:none">Update selected links</button>
       </div>
       <div class="imp-group" id="impMissGroup">
         <div class="imp-head"><span class="imp-h-title">🔴 Missing — in the roster, not on your list</span> <span class="imp-count" id="impMissCount">0</span></div>
@@ -1555,6 +1560,31 @@ $("exportCopy").addEventListener("click", async ()=>{
 
 // ---- import / compare ----
 function normName(s){ return (s||"").toLowerCase().replace(/[^a-z0-9]/g,""); }
+function firstName(s){ return normName((s||"").trim().split(/\s+/)[0]||""); }
+function normUrl(u){ return (u||"").toLowerCase().replace(/^https?:\/\//,"").replace(/^www\./,"").replace(/\/+$/,""); }
+// does the import entry's stream differ from what the member already has?
+function streamChange(m, e){
+  if(e.login){
+    const logins = memberTwitchLogins(m);
+    if(!logins.includes(e.login)) return { old: logins.length?("twitch.tv/"+logins[0]):"—", neu:"twitch.tv/"+e.login };
+  } else if(e.url){
+    const urls = parseStreams(m).map(s=>normUrl(s.url));
+    if(!urls.includes(normUrl(e.url))){ const f=parseStreams(m)[0]; return { old: f?normUrl(f.url):"—", neu:normUrl(e.url) }; }
+  }
+  return null;
+}
+// build the member's updated stream list from an import entry (keeps their other platforms)
+function applyImportStream(m, e){
+  const streams = parseStreams(m).map(s=>({platform:s.platform, url:s.url}));
+  if(e.login){
+    const url = (e.url && /twitch\.tv/i.test(e.url)) ? e.url : ("https://twitch.tv/"+e.login);
+    const i = streams.findIndex(s=>/twitch/i.test(s.platform||"")||/twitch\.tv/i.test(s.url||""));
+    if(i>=0) streams[i]={platform:"Twitch", url}; else streams.unshift({platform:"Twitch", url});
+  } else if(e.url){
+    if(!streams.some(s=>normUrl(s.url)===normUrl(e.url))) streams.unshift({platform:"Other", url:e.url});
+  }
+  return streams;
+}
 function parseImportList(text){
   return text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(line=>{
     const um = line.match(/https?:\/\/\S+/i);
@@ -1565,7 +1595,7 @@ function parseImportList(text){
     return { name, url, login };
   });
 }
-let impNew=[], impMissing=[];
+let impNew=[], impMissing=[], impChanged=[];
 function openImport(){
   $("impRole").innerHTML = ROLES.map((r,i)=>`<option ${i===ROLES.length-1?"selected":""}>${esc(r)}</option>`).join("");
   $("impSeason").textContent = selectedSeason;
@@ -1578,13 +1608,19 @@ function doCompare(){
   if(!entries.length){ $("importErr").textContent="Paste at least one line first (name and stream link)."; return; }
   $("importErr").textContent="";
   const roster = members.filter(m=>m.status==="Active");
-  const idx = roster.map(m=>({ m, login:(memberTwitchLogins(m)[0]||null), key:normName(m.character_name||m.name) }));
+  const idx = roster.map(m=>({ m, login:(memberTwitchLogins(m)[0]||null), key:normName(m.character_name||m.name), fkey:firstName(m.character_name||m.name) }));
   const matched=new Set();
-  impNew=[];
+  impNew=[]; impChanged=[];
   entries.forEach(e=>{
-    const el=e.login, ek=normName(e.name);
-    const hit = idx.find(r=> (el && r.login && r.login===el) || (ek && r.key && r.key===ek));
-    if(hit) matched.add(hit.m.id); else impNew.push(e);
+    const el=e.login, ek=normName(e.name), efk=firstName(e.name);
+    // 1) exact Twitch login, 2) full name, 3) first name — never double-match one member
+    let hit = el ? idx.find(r=>r.login===el && !matched.has(r.m.id)) : null;
+    if(!hit) hit = idx.find(r=> !matched.has(r.m.id) && ((ek && r.key===ek) || (efk && r.fkey && r.fkey===efk)));
+    if(hit){
+      matched.add(hit.m.id);
+      const ch = streamChange(hit.m, e);
+      if(ch) impChanged.push({ m:hit.m, e, old:ch.old, neu:ch.neu });
+    } else impNew.push(e);
   });
   impMissing = roster.filter(m=>!matched.has(m.id));
   renderImportResults(matched.size);
@@ -1597,6 +1633,13 @@ function renderImportResults(matchedCount){
       <span class="imp-nm">${esc(e.name)}</span>${e.url?`<span class="imp-url">${esc(e.login?("twitch.tv/"+e.login):e.url)}</span>`:""}</label>`).join("")
     : `<div class="imp-none">Nobody new — everyone on your list is already in the roster.</div>`;
   $("impAddBtn").style.display = impNew.length ? "inline-flex" : "none";
+  $("impChangedCount").textContent = impChanged.length;
+  $("impChangedList").innerHTML = impChanged.length ? impChanged.map((c,i)=>`
+    <label class="imp-item"><input type="checkbox" class="imp-chg-chk" data-i="${i}" checked>
+      <span class="imp-nm">${esc(c.m.character_name||c.m.name)}</span>
+      <span class="imp-url" style="flex:1">${esc(c.old)} → <b>${esc(c.neu)}</b></span></label>`).join("")
+    : `<div class="imp-none">No stream links changed for matched members.</div>`;
+  $("impUpdateBtn").style.display = impChanged.length ? "inline-flex" : "none";
   $("impMissCount").textContent = impMissing.length;
   const opts=['Keep','On Leave','Bleedout','Perma Killed','Removed'];
   $("impMissList").innerHTML = impMissing.length ? impMissing.map(m=>`
@@ -1648,10 +1691,29 @@ async function importApplyMissing(){
   toast(`${done} updated${failed?`, ${failed} failed`:""}`);
   await loadMembers(); doCompare();
 }
+async function importApplyStreamUpdates(){
+  const picks=[...document.querySelectorAll(".imp-chg-chk:checked")].map(c=>impChanged[+c.dataset.i]).filter(Boolean);
+  if(!picks.length){ toast("Select at least one"); return; }
+  const btn=$("impUpdateBtn"); btn.disabled=true; const o=btn.textContent;
+  let done=0,failed=0;
+  for(const c of picks){
+    try{
+      const streams=applyImportStream(c.m, c.e);
+      const hist=parseHistory(c.m).slice();
+      hist.push({date:todayStr(), text:`Stream updated → ${c.neu}`, auto:true});
+      const { error }=await sb.from("members").update({streams, history:hist}).eq("id",c.m.id);
+      if(error) throw error; done++;
+    }catch(err){ failed++; }
+  }
+  btn.disabled=false; btn.textContent=o;
+  toast(`${done} link${done!==1?"s":""} updated${failed?`, ${failed} failed`:""}`);
+  await loadMembers(); doCompare();
+}
 $("importBtn").addEventListener("click", openImport);
 $("importClose").addEventListener("click", ()=>$("importOverlay").classList.remove("show"));
 $("importCompare").addEventListener("click", doCompare);
 $("impAddBtn").addEventListener("click", importAddSelected);
+$("impUpdateBtn").addEventListener("click", importApplyStreamUpdates);
 $("impApplyBtn").addEventListener("click", importApplyMissing);
 
 // ---- photo gallery ----
