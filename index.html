@@ -960,6 +960,7 @@ function applySeason(){
   renderSeasonBar();
   animateOnce = true;
   render();
+  if(galleryLoaded) renderGallery();
 }
 function renderSeasonBar(){
   if(seasonsPresent.length<=1 && currentSeason===1){ $("seasonBar").style.display="none"; }
@@ -1629,7 +1630,7 @@ $("impAddBtn").addEventListener("click", importAddSelected);
 $("impApplyBtn").addEventListener("click", importApplyMissing);
 
 // ---- photo gallery ----
-let galleryPhotos=[], galleryLoaded=false, galleryChan=null, lbIndex=0;
+let galleryPhotos=[], allGalleryPhotos=[], galleryLoaded=false, galleryChan=null, lbIndex=0;
 function switchView(v){
   const gallery = v==="gallery";
   $("rosterView").style.display = gallery?"none":"block";
@@ -1647,14 +1648,19 @@ async function loadGallery(){
   if(!galleryPhotos.length) grid.innerHTML=`<div class="gallery-empty">Loading…</div>`;
   const { data, error } = await sb.from("gallery").select("*").order("created_at",{ascending:false});
   if(error){ grid.innerHTML=`<div class="gallery-empty">Couldn't load the gallery.<br><span style="font-size:.82rem">Run the gallery SQL (Step 2d in the setup guide) to enable it.</span></div>`; return; }
-  galleryPhotos=data||[];
+  allGalleryPhotos=data||[];
   renderGallery();
   if(!galleryChan){ try{ galleryChan=sb.channel("gallery-changes").on("postgres_changes",{event:"*",schema:"public",table:"gallery"},()=>loadGallery()).subscribe(); }catch(_){} }
 }
 function renderGallery(){
   const grid=$("galleryGrid");
   grid.classList.toggle("editable", canEdit);
-  if(!galleryPhotos.length){ grid.innerHTML=`<div class="gallery-empty">No photos yet.${canEdit?" Click <b>+ Add photos</b> to post some.":""}</div>`; return; }
+  galleryPhotos = allGalleryPhotos.filter(p=>+(p.season||1)===selectedSeason);
+  if(!galleryPhotos.length){
+    const other = allGalleryPhotos.length;
+    grid.innerHTML=`<div class="gallery-empty">No photos in Season ${selectedSeason} yet.${canEdit?" Click <b>+ Add photos</b> to post some.":""}${other?`<br><span style="font-size:.82rem">${other} photo${other!==1?"s":""} in other season${other!==1?"s":""} — switch seasons at the top to view them.</span>`:""}</div>`;
+    return;
+  }
   grid.innerHTML = galleryPhotos.map((p,i)=>`
     <div class="gcell" onclick="openLightbox(${i})">
       <button class="g-dl" title="Download" onclick="event.stopPropagation();downloadPhoto('${esc(p.url)}','${esc(dlName(p,i))}')">${SVG_DOWNLOAD}</button>
@@ -1706,7 +1712,7 @@ $("galleryFile").addEventListener("change", async e=>{
       const { error:upErr }=await sb.storage.from("gallery").upload(path, blob, {contentType:"image/jpeg", upsert:true});
       if(upErr) throw upErr;
       const purl=sb.storage.from("gallery").getPublicUrl(path).data.publicUrl;
-      const { error:insErr }=await sb.from("gallery").insert({url:purl, path});
+      const { error:insErr }=await sb.from("gallery").insert({url:purl, path, season:selectedSeason});
       if(insErr) throw insErr;
       done++;
     }catch(err){ failed++; }

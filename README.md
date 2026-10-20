@@ -8,8 +8,8 @@ Live gang roster & stream tracker for the Unholy crew on HeadlinerRP. One self-c
 - Automatic **Twitch live detection** + "Live now" spotlight strip
 - Click-through **profiles** with history timeline and stream links (Twitch / YouTube / Kick / TikTok)
 - **Profile photos** with framing (position / zoom / fill) and banner cover cards
-- **Photo gallery** — editors post (auto-compressed), everyone views in a lightbox and can download
-- **Seasons** — archive past seasons, start new ones empty
+- **Photo gallery** — editors post (auto-compressed), everyone views in a lightbox and can download; season-aware
+- **Seasons** — archive past seasons, start new ones empty; roster *and* gallery filter by season
 - **Discord export** (name + Twitch link) and **Import / compare** (reconcile against a pasted list)
 - Hero team photo, Multiview button, shared-password editing (Supabase RLS)
 
@@ -19,4 +19,4 @@ See `../Docs/Setup guide.md`. Needs a free Supabase project; keys go in the `CON
 ## Hosting
 Static site — host `index.html` on GitHub Pages (repo must be public; only the publishable key is in the file) or Netlify.
 
-Last updated: 2026-10
+Last updated: 2026-10-20

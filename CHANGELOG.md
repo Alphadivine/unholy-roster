@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10 — Season-aware gallery
+- The **📸 Gallery** now follows the active season: existing photos become Season 1, new uploads are tagged to the season you're viewing, and switching seasons filters the photos to match.
+- Empty seasons show a hint pointing to photos in other seasons. Requires a `season` column on the `gallery` table (Setup guide Step 2e).
+
 ## 2026-10 — "Perma Killed" status
 - Added a **Perma Killed** status for members whose character has been permanently killed (PK'd). Shows a distinct dark-red badge, groups into the **Out** section, and auto-logs "Character perma killed (PK)" to the member's history.
 - Available in the member edit form and as an off-list reason in **Import & compare** (Keep / On Leave / Bled out / Perma killed / Left).
