@@ -971,8 +971,9 @@ function applySeason(){
   if(galleryLoaded) renderGallery();
 }
 function renderSeasonBar(){
-  if(seasonsPresent.length<=1 && currentSeason===1){ $("seasonBar").style.display="none"; }
-  else { $("seasonBar").style.display="flex"; }
+  // show for viewers only once there's more than one season; always show in edit mode so editors can start one
+  const show = canEdit || seasonsPresent.length>1 || currentSeason>1;
+  $("seasonBar").style.display = show ? "flex" : "none";
   const sel=$("seasonSelect");
   sel.innerHTML = seasonsPresent.map(s=>`<option value="${s}" ${s===selectedSeason?"selected":""}>Season ${s}${s===currentSeason?" (current)":""}</option>`).join("");
   $("seasonTag").textContent = selectedSeason===currentSeason ? "Current" : "Archive";
@@ -1420,6 +1421,7 @@ function setEditMode(on){
   $("newSeasonBtn").style.display = on?"inline-flex":"none";
   $("galleryAddBtn").style.display = on?"inline-flex":"none";
   if(galleryLoaded) renderGallery();
+  renderSeasonBar();
   $("editToggle").textContent = on?"🔓 Lock":"🔒 Edit";
   if(members.length) render();
 }

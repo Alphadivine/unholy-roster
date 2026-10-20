@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-10 — Fix: "Start new season" button hidden on single-season setups
+- The Season bar (and its **+ Start new season** button) was hidden whenever only Season 1 existed — exactly when you need it. It now shows in **edit mode** regardless of season count, so editors can always start the next season. Viewers still only see the bar once more than one season exists.
+
 ## 2026-10 — Per-member season control
 - The member edit form now has a **Season** dropdown (shown once more than one season exists) to **move** a person to a different season.
 - Added a **⇧ Carry over to current season** button that **copies** a member into the current season while leaving their archived record intact — for core members who continue into the new season.
