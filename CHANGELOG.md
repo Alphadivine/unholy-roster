@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-10 — Fix: gallery empty-state card clipped
+- The "No photos in Season N" message was flowing through the gallery's multi-column layout and getting split/cut off. It now spans the full width as a single card.
+
 ## 2026-10 — Per-season banner
 - The top **banner is now per-season**. The existing banner automatically becomes **Season 1's**, and switching seasons swaps the banner.
 - In edit mode you can **add / change / remove** the banner for whichever season you're viewing (uploaded and auto-compressed, stored per season in settings). A season with no banner shows none; removing Season 1's reverts to the built-in default.
